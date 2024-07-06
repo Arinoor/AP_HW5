@@ -1,6 +1,5 @@
-import javax.print.DocFlavor;
-import java.net.URI;
-import java.security.spec.ECField;
+package System;
+
 import java.sql.*;
 
 public class DataBaseManager {
@@ -35,7 +34,7 @@ public class DataBaseManager {
             if(rs.next()) {
                 return rs.getInt("id");
             }
-            throw new Exception("User does not exist in database");
+            throw new Exception("System.User does not exist in database");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -66,11 +65,11 @@ public class DataBaseManager {
         return false;
     }
 
-    public boolean logInUser(User user) throws Exception { // User not found Exception
+    public boolean logInUser(User user) throws Exception { // System.User not found Exception
         return setLogInStatus(user, true);
     }
 
-    public boolean logOutUser(User user) throws Exception { // User not found Exception
+    public boolean logOutUser(User user) throws Exception { // System.User not found Exception
         return setLogInStatus(user, false);
     }
 

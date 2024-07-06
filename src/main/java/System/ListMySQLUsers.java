@@ -1,3 +1,5 @@
+package System;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -18,7 +20,7 @@ public class ListMySQLUsers {
             while (rs.next()) {
                 String user = rs.getString("user");
                 String host = rs.getString("host");
-                System.out.println("User: " + user + ", Host: " + host);
+                System.out.println("System.User: " + user + ", Host: " + host);
             }
         } catch (SQLException e) {
             e.printStackTrace();
