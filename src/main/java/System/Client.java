@@ -1,6 +1,7 @@
+package System;
+
 import java.io.*;
 import java.net.Socket;
-import java.util.Objects;
 
 public class Client {
     private final String HOST;
