@@ -1,6 +1,9 @@
 package System;
 
 import java.sql.*;
+import Exception.*;
+
+import javax.xml.crypto.Data;
 
 public class DataBaseManager {
     private static final String DB_URL = "jdbc::mysql://localhost:3306/user_db";
@@ -23,127 +26,110 @@ public class DataBaseManager {
         }
     }
 
-    public int getUserId(User user) throws Exception {
+    public int getUserId(User user) throws UserNotRegisteredException, SQLException {
         String query = "SELECT * FROM users WHERE username = ? AND password = ?";
-        try(Connection conn = getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setString(1, user.getUsername());
-            pstmt.setString(2, user.getPassword());
+        Connection conn = getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(query);
+        pstmt.setString(1, user.getUsername());
+        pstmt.setString(2, user.getPassword());
+        ResultSet rs = pstmt.executeQuery();
 
-            ResultSet rs = pstmt.executeQuery();
-            if(rs.next()) {
-                return rs.getInt("id");
-            }
-            throw new Exception("System.User does not exist in database");
-        } catch (SQLException e) {
-            e.printStackTrace();
+        if(rs.next()) {
+            return rs.getInt("id");
         }
-        return -1;
-        //TODO: add Network Exception
+        throw new UserNotRegisteredException("Username or Password is incorrect");
     }
 
-    public boolean isUserLoggedIn(User user) {
-        int userId;
-        try {
-            userId = getUserId(user);
-        } catch (Exception e) {
-            return false;
+    public boolean logInUser(User user) throws DatabaseException, UserNotRegisteredException, SQLException {
+        if(getLogInStatus(user) == true) {
+            throw new LogInException("User is already logged in");
         }
-        String query = "SELECT * FROM user_status WHERE id = ?";
-        try(Connection conn = getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setInt(1, userId);
-
-            ResultSet rs = pstmt.executeQuery();
-            if(rs.next()) {
-                return rs.getBoolean("is_logged_in");
-            }
-            return false;
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-
-    public boolean logInUser(User user) throws Exception { // System.User not found Exception
         return setLogInStatus(user, true);
     }
 
-    public boolean logOutUser(User user) throws Exception { // System.User not found Exception
+    public boolean logOutUser(User user) throws DatabaseException, UserNotRegisteredException, SQLException {
+        if(getLogInStatus(user) == false) {
+            throw new LogOutException("User is already logged out");
+        }
         return setLogInStatus(user, false);
     }
 
-    public boolean setLogInStatus(User user, boolean logInStatus) throws Exception {
-        int userId;
-        try {
-            userId = getUserId(user);
-        } catch (Exception e) {
-            throw new Exception("user does not exist in database");
+
+    public boolean getLogInStatus(User user) throws DatabaseException, UserNotRegisteredException, SQLException{
+        int userId = getUserId(user);
+        String query = "SELECT is_logged_in FROM user_status WHERE user_id = ?";
+        Connection conn = getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(query);
+        pstmt.setInt(1, userId);
+        ResultSet rs = pstmt.executeQuery();
+
+        if(rs.next()) {
+            return rs.getBoolean("is_logged_in");
         }
+        throw new DatabaseException("User is registered but does not exist in user_status database");
+    }
+
+    public boolean setLogInStatus(User user, boolean logInStatus) throws DatabaseException, UserNotRegisteredException, SQLException {
+        int userId = getUserId(user);
         String query = "UPDATE user_status SET is_logged_in = ? WHERE user_id = ?";
-        try(Connection conn = getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setBoolean(1, logInStatus);
-            pstmt.setInt(2, userId);
+        Connection conn = getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(query);
+        pstmt.setBoolean(1, logInStatus);
+        pstmt.setInt(2, userId);
 
-            int rowsUpdatedNumber = pstmt.executeUpdate();
-            return rowsUpdatedNumber > 0;
-        } catch(SQLException e) {
-            e.printStackTrace();
-        }
-        return false;
+        int rowsUpdatedNumber = pstmt.executeUpdate();
+        if(rowsUpdatedNumber > 0)
+            return true;
+        throw new DatabaseException("User is registered but does not exist in user_status database");
+
     }
 
-    public boolean registerUser(User user) {
+    public boolean registerUser(User user) throws NotAvailableUsernameException, DatabaseException, SQLException {
+        checkUsernameAvailable(user.getUsername());
         String query = "INSERT INTO users (username, password) VALUES (?, ?)";
-        try(Connection conn = getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setString(1, user.getUsername());
-            pstmt.setString(2, user.getPassword());
+        Connection conn = getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(query);
+        pstmt.setString(1, user.getUsername());
+        pstmt.setString(2, user.getPassword());
 
-            int rowsInsertedNumber = pstmt.executeUpdate();
-            assert rowsInsertedNumber > 0;
-            ResultSet rs = pstmt.getGeneratedKeys();
-            if(rs.next()) {
-                int generatedId = rs.getInt(1);
-                return initializeUserStatus(generatedId);
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
+        int rowsInsertedNumber = pstmt.executeUpdate();
+        if(rowsInsertedNumber == 0)
+            throw new DatabaseException("unexpected database behavior");
+        ResultSet rs = pstmt.getGeneratedKeys();
+        if(rs.next()) {
+            int generatedId = rs.getInt(1);
+            return initializeUserStatus(generatedId);
         }
-        return false;
+        throw new DatabaseException("unexpected database behavior");
     }
 
-    public boolean doesUsernameExist(String username) {
-        String query = "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?";
-        try (Connection conn = getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setString(1, username);
+    public void checkUsernameAvailable(String username) throws NotAvailableUsernameException, DatabaseException, SQLException{
+        String query = "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)";
+        Connection conn = getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(query);
+        pstmt.setString(1, username);
+        ResultSet rs = pstmt.executeQuery();
 
-            ResultSet rs = pstmt.executeQuery();
-            if(rs.next()) {
-                return rs.getBoolean(1);
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
+        if(!rs.next())
+            throw new DatabaseException("unexpected database behavior");
+        if(rs.getBoolean(1)) {
+            throw new NotAvailableUsernameException("username is not available");
         }
-        return false;
+
     }
 
-    private boolean initializeUserStatus(int generatedId) {
+    private boolean initializeUserStatus(int generatedId) throws DatabaseException, SQLException{
         String query = "INSERT INTO user_status (user_id, id_logged_in) VALUES (?, ?)";
-        try(Connection conn = getConnection()) {
-            PreparedStatement pstmt = conn.prepareStatement(query);
-            pstmt.setInt(1, generatedId);
-            pstmt.setBoolean(2, false);
+        Connection conn = getConnection();
+        PreparedStatement pstmt = conn.prepareStatement(query);
+        pstmt.setInt(1, generatedId);
+        pstmt.setBoolean(2, false);
 
-            int rowsInsertedNumber = pstmt.executeUpdate();
-            return rowsInsertedNumber > 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
+        int rowsInsertedNumber = pstmt.executeUpdate();
+        if(rowsInsertedNumber == 0) {
+            throw new DatabaseException("unexpected database behavior");
         }
-        return false;
+        return true;
     }
 
 }
