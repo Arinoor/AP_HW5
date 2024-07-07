@@ -51,48 +51,33 @@ public class Server {
                     this.LogoutHandler();
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void LogoutHandler() {
-        try {
-            User user = getUser();
-            dataBaseManager.logOutUser(user);
-            output.write(String.format("User Logged out successfully with username %s and password %s",
-                    user.getUsername(), user.getPassword()));
-        } catch (Exception e) {
-            output.write(e.getMessage());
-        }
-
-    }
-
-    private void LoginHandler() {
-
-        try {
-            User user = getUser();
-            dataBaseManager.logInUser(user);
-            output.write(String.format("User Logged in successfully with username %s and password %s",
-                    user.getUsername(), user.getPassword()));
-        } catch (Exception e) {
-            output.write(e.getMessage());
-        }
-
-    }
-
-
-    private void RegisterHandler() {
-        try {
-            User user = getUser();
-            dataBaseManager.registerUser(user);
-            output.write(String.format("User registered successfully with username %s and password %s",
-                    user.getUsername(), user.getPassword()));
-        } catch (Exception e) {
             output.write(e.getMessage());
         }
     }
 
-    private User getUser() throws InvalidUsernameException, InvalidPasswordException {
+    private void LogoutHandler() throws Exception{
+        User user = getUser();
+        dataBaseManager.logOutUser(user);
+        output.write(String.format("User Logged out successfully with username %s and password %s",
+                user.getUsername(), user.getPassword()));
+    }
+
+    private void LoginHandler() throws Exception{
+        User user = getUser();
+        dataBaseManager.logInUser(user);
+        output.write(String.format("User Logged in successfully with username %s and password %s",
+                    user.getUsername(), user.getPassword()));
+    }
+
+
+    private void RegisterHandler() throws Exception{
+        User user = getUser();
+        dataBaseManager.registerUser(user);
+        output.write(String.format("User registered successfully with username %s and password %s",
+                user.getUsername(), user.getPassword()));
+    }
+
+    private User getUser() throws InvalidCredentialsException {
         String username, password;
         username = getUsername();
         password = getPassword();
@@ -102,22 +87,22 @@ public class Server {
     private String getPassword() throws InvalidPasswordException {
         output.write("Enter your password");
         String password = input.next();
-        checkPassword();
+        checkPassword(password);
         return password;
     }
 
     private String getUsername() throws InvalidUsernameException {
         output.write("Enter your username");
         String username = input.next();
-        checkUsername();
+        checkUsername(username);
         return username;
     }
 
 
-    private void checkPassword() throws InvalidPasswordException {
+    private void checkPassword(String password) throws InvalidPasswordException {
     }
 
-    private void checkUsername() throws InvalidUsernameException {
+    private void checkUsername(String username) throws InvalidUsernameException {
 
     }
 }
