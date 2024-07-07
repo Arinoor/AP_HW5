@@ -20,10 +20,13 @@ public class Server {
         try {
             serverSocket = new ServerSocket(port);
             socket = serverSocket.accept();
+            System.out.println(socket.getInetAddress());
             input = new Scanner(socket.getInputStream());
-            output = new PrintWriter(socket.getOutputStream());
+            output = new PrintWriter(socket.getOutputStream(), true );
             dataBaseManager = new DataBaseManager();
+            System.out.println("Server is ready");
             this.run();
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -41,14 +44,21 @@ public class Server {
 
     private void getQuery() {
         try {
-            String command = input.next();
+            System.out.println("Waiting for query");
+            String command = input.nextLine();
+            System.out.println(command);
             switch (command) {
                 case "Register" :
                     this.RegisterHandler();
+                    break;
                 case "Login" :
                     this.LoginHandler();
+                    break;
                 case "Logout" :
                     this.LogoutHandler();
+                    break;
+                default :
+                    throw new InvalidQueryException("Unhandled query");
             }
         } catch (Exception e) {
             output.write(e.getMessage());
@@ -58,14 +68,16 @@ public class Server {
     private void LogoutHandler() throws Exception{
         User user = getUser();
         dataBaseManager.logOutUser(user);
-        output.write(String.format("User Logged out successfully with username %s and password %s",
+        output.write(String.format("User logged out successfully with username %s and password %s",
                 user.getUsername(), user.getPassword()));
     }
 
     private void LoginHandler() throws Exception{
+        System.out.println("Server is ready to login");
         User user = getUser();
+        System.out.println(user.getUsername() + " " + user.getPassword());
         dataBaseManager.logInUser(user);
-        output.write(String.format("User Logged in successfully with username %s and password %s",
+        output.write(String.format("User logged in successfully with username %s and password %s",
                     user.getUsername(), user.getPassword()));
     }
 
