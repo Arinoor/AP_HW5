@@ -1,6 +1,8 @@
 package System;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -12,7 +14,7 @@ public class Server {
     final int port = 8090;
     ServerSocket serverSocket;
     Socket socket;
-    Scanner input;
+    BufferedReader input;
     PrintWriter output;
     DataBaseManager dataBaseManager;
 
@@ -20,9 +22,8 @@ public class Server {
         try {
             serverSocket = new ServerSocket(port);
             socket = serverSocket.accept();
-            System.out.println(socket.getInetAddress());
-            input = new Scanner(socket.getInputStream());
-            output = new PrintWriter(socket.getOutputStream(), true );
+            input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            output = new PrintWriter(socket.getOutputStream(), true);
             dataBaseManager = new DataBaseManager();
             System.out.println("Server is ready");
             this.run();
@@ -44,9 +45,7 @@ public class Server {
 
     private void getQuery() {
         try {
-            System.out.println("Waiting for query");
-            String command = input.nextLine();
-            System.out.println(command);
+            String command = input.readLine();
             switch (command) {
                 case "Register" :
                     this.RegisterHandler();
@@ -61,14 +60,14 @@ public class Server {
                     throw new InvalidQueryException("Unhandled query");
             }
         } catch (Exception e) {
-            output.write(e.getMessage());
+            output.println(e.getMessage());
         }
     }
 
     private void LogoutHandler() throws Exception{
         User user = getUser();
         dataBaseManager.logOutUser(user);
-        output.write(String.format("User logged out successfully with username %s and password %s",
+        output.println(String.format("User logged out successfully with username %s and password %s",
                 user.getUsername(), user.getPassword()));
     }
 
@@ -77,7 +76,7 @@ public class Server {
         User user = getUser();
         System.out.println(user.getUsername() + " " + user.getPassword());
         dataBaseManager.logInUser(user);
-        output.write(String.format("User logged in successfully with username %s and password %s",
+        output.println(String.format("User logged in successfully with username %s and password %s",
                     user.getUsername(), user.getPassword()));
     }
 
@@ -85,27 +84,27 @@ public class Server {
     private void RegisterHandler() throws Exception{
         User user = getUser();
         dataBaseManager.registerUser(user);
-        output.write(String.format("User registered successfully with username %s and password %s",
+        output.println(String.format("User registered successfully with username %s and password %s",
                 user.getUsername(), user.getPassword()));
     }
 
-    private User getUser() throws InvalidCredentialsException {
+    private User getUser() throws InvalidCredentialsException, IOException {
         String username, password;
         username = getUsername();
         password = getPassword();
         return new User(username, password);
     }
 
-    private String getPassword() throws InvalidPasswordException {
-        output.write("Enter your password");
-        String password = input.next();
+    private String getPassword() throws InvalidPasswordException, IOException {
+        output.println("Enter your password");
+        String password = input.readLine();
         checkPassword(password);
         return password;
     }
 
-    private String getUsername() throws InvalidUsernameException {
-        output.write("Enter your username");
-        String username = input.next();
+    private String getUsername() throws InvalidUsernameException, IOException {
+        output.println("Enter your username");
+        String username = input.readLine();
         checkUsername(username);
         return username;
     }
