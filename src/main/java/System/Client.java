@@ -2,8 +2,16 @@ package System;
 
 import java.io.*;
 import java.net.Socket;
+import java.net.SocketException;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Scanner;
 import Exception.*;
+import Config.*;
+import java.net.DatagramSocket;
+import java.net.DatagramPacket;
+import java.util.concurrent.CountDownLatch;
+
 
 public class Client {
     private final String HOST;
@@ -129,16 +137,96 @@ public class Client {
         }
     }
 
-    private void downloadFilesHandler() throws IOException {
+    private void showFilesPage() throws IOException {
         userOutput.println("Choose one of the names below to download the file\n");
         serverOutput.write("Show files");
-        String respond = serverInput.readLine();
-        String[] fileNames = respond.split(" ");
+        String respond = serverInput.readLine().trim();
         userOutput.println(respond);
         userOutput.print("Enter your file name : ");
         String fileName = userInput.nextLine().trim();
+        String[] fileNames = respond.split(" ");
+        if(Arrays.asList(fileNames).contains(fileName)) {
+            downloadHandler(fileName);
+        }
+        else {
+            userOutput.println("Please choose one of available file names");
+            showFilesPage();
+        }
 
+    }
 
+    private void downloadHandler(String fileName) {
+        try {
+            serverOutput.println("Download");
+            sendUserToServer(getLoggedInUser());
+            sendFileToServer(fileName);
+            String respond = serverInput.readLine();
+            userOutput.println(respond);
+            if(!respond.contains("successful")){
+                showFilesPage();
+            }
+            receiveFileFromServer(fileName);
+        } catch (Exception e) {
+            userOutput.println(e.getMessage());
+        }
+    }
+
+    private void receiveFileFromServer(String fileName) throws IOException, CreateFileException, CreateDirectoryException, InterruptedException {
+        RandomAccessFile downloadFile = createFile(fileName);
+        int fileSize = Integer.parseInt(serverInput.readLine());
+        int chunkNumber = fileSize / Config.CHUNK_SIZE;
+        CountDownLatch latch = new CountDownLatch(chunkNumber);
+        DatagramSocket socket = new DatagramSocket(Config.port);
+        for(int i = 0; i < chunkNumber; i++) {
+            new Thread(() -> {
+                try {
+                    receiveChunk(downloadFile, latch, socket);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
+        }
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw e;
+        } finally {
+            downloadFile.close();
+            userOutput.println("File downloaded successfully");
+            homePageLoggedInPage();
+        }
+    }
+
+    public void receiveChunk(RandomAccessFile downloadFile, CountDownLatch latch, DatagramSocket socket) throws IOException {
+        byte[] buffer = new byte[Config.CHUNK_SIZE + 4]; // first 4 bytes indicate the chunk number
+        DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+        socket.receive(packet);
+        int chunkNumber = getChunkNumber(buffer);
+        byte[] chunk = Arrays.copyOfRange(buffer, 4, buffer.length);
+        // now we have the chunk number and the chunk itself we are going to write the chunk into download file
+        synchronized (downloadFile) {
+            downloadFile.seek((long) chunkNumber * Config.CHUNK_SIZE);
+            downloadFile.write(chunk);
+        }
+        latch.countDown();
+    }
+
+    private RandomAccessFile createFile(String fileName) throws CreateDirectoryException, CreateFileException, FileNotFoundException {
+        File directory = new File(Config.CLIENT_FILE_PATH);
+        if(!directory.exists()) {
+            boolean wasSuccessful = directory.mkdirs();
+            if(!wasSuccessful) {
+                throw new CreateDirectoryException("Could not create directory");
+            }
+        }
+        File file = new File(Config.CLIENT_FILE_PATH + fileName);
+        return new RandomAccessFile(file, "rw");
+    }
+
+    private int getChunkNumber(byte[] buffer) {
+        byte[] chunkNumber = Arrays.copyOfRange(buffer, 0, 4);
+        return ByteBuffer.wrap(chunkNumber).getInt();
     }
 
     private boolean sendUserToServer(User user) throws ServerException, IOException {
@@ -154,6 +242,15 @@ public class Client {
             throw new ServerException("Server was supposed to ask for password");
         }
         return true;
+    }
+
+    private void sendFileToServer(String fileName) throws ServerException, IOException {
+        String response;
+        if ((response = serverInput.readLine()).equals("Enter your file name")) {
+            serverOutput.println(fileName);
+        } else {
+            throw new ServerException("Server was supposed to ask for file name");
+        }
     }
 
     private User getUser() {
