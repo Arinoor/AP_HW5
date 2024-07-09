@@ -9,7 +9,8 @@ public class Client {
     private final String HOST;
     private final int PORT;
     private Socket socket;
-    private Scanner serverInput, userInput;
+    private BufferedReader serverInput;
+    private Scanner userInput;
     private PrintWriter serverOutput;
     private PrintStream userOutput;
     private User user;
@@ -24,7 +25,7 @@ public class Client {
     private void initializeClient() {
         try {
             this.socket = new Socket(HOST, PORT);
-            this.serverInput = new Scanner(socket.getInputStream());
+            this.serverInput = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             this.serverOutput = new PrintWriter(socket.getOutputStream(), true);
             this.userInput = new Scanner(System.in);
             this.userOutput = System.out;
@@ -42,7 +43,6 @@ public class Client {
         }
     }
 
-
     private void homePageLoggedInPage() {
         userOutput.println("Welcome to our file manager. You are logged in as " + getLoggedInUser().getUsername() + "\nChoose one of options below\n[1] logout");
         String query = userInput.next().toLowerCase().trim();
@@ -59,11 +59,11 @@ public class Client {
         String query = userInput.next().toLowerCase().trim();
         switch (query) {
             case "1":
-            case "login":
+            case "Login":
                 logInHandler();
                 break;
             case "2":
-            case "register":
+            case "Register":
                 registerHandler();
                 break;
             default:
@@ -75,10 +75,10 @@ public class Client {
 
     private void registerHandler() {
         try {
-            serverOutput.write("Register");
+            serverOutput.println("Register");
             User user = getUser();
             sendUserToServer(user);
-            String response = serverInput.next();
+            String response = serverInput.readLine();
             userOutput.println(response);
             homePageNotLoggedInPage();
         } catch (Exception e) {
@@ -88,11 +88,10 @@ public class Client {
 
     private void logInHandler() {
         try {
-            serverOutput.write("Login");
-            System.out.println("message is sent");
+            serverOutput.println("Login");
             User user = getUser();
             sendUserToServer(user);
-            String response = serverInput.next();
+            String response = serverInput.readLine();
             userOutput.println(response);
             if (response.contains("logged in")) {
                 setLoggedInUser(user);
@@ -107,9 +106,9 @@ public class Client {
 
     private void logOutHandler() {
         try {
-            serverOutput.write("Logout");
+            serverOutput.println("Logout");
             sendUserToServer(getLoggedInUser());
-            String response = serverInput.next();
+            String response = serverInput.readLine();
             if(response.contains("logged out")) {
                 setLoggedInUser(null);
             } else {
@@ -124,15 +123,15 @@ public class Client {
     }
 
 
-    private boolean sendUserToServer(User user) throws ServerException{
+    private boolean sendUserToServer(User user) throws ServerException, IOException {
         String response;
-        if ((response = serverInput.next()).equals("Enter your username")) {
-            serverOutput.write(user.getPassword());
+        if ((response = serverInput.readLine()).equals("Enter your username")) {
+            serverOutput.println(user.getUsername());
         } else {
             throw new ServerException("Server was supposed to ask for username");
         }
-        if ((response = serverInput.next()).equals("Enter your password")) {
-            serverOutput.write(user.getPassword());
+        if ((response = serverInput.readLine()).equals("Enter your password")) {
+            serverOutput.println(user.getPassword());
         } else {
             throw new ServerException("Server was supposed to ask for password");
         }
@@ -170,6 +169,4 @@ public class Client {
     public static void main(String[] args) {
         new Client("127.0.0.1", 8090);
     }
-
-
 }
