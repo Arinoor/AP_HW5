@@ -3,10 +3,8 @@ package System;
 import java.sql.*;
 import Exception.*;
 
-import javax.xml.crypto.Data;
-
 public class DataBaseManager {
-    private static final String DB_URL = "jdbc::mysql://localhost:3306/user_db";
+    private static final String DB_URL = "jdbc:mysql://localhost:3306/user_db";
     private static final String USER = "root";
     private static final String PASS = "lmqsy.Arinoor_8053";
 
@@ -88,7 +86,7 @@ public class DataBaseManager {
         checkUsernameAvailable(user.getUsername());
         String query = "INSERT INTO users (username, password) VALUES (?, ?)";
         Connection conn = getConnection();
-        PreparedStatement pstmt = conn.prepareStatement(query);
+        PreparedStatement pstmt = conn.prepareStatement(query, PreparedStatement.RETURN_GENERATED_KEYS);
         pstmt.setString(1, user.getUsername());
         pstmt.setString(2, user.getPassword());
 
@@ -119,7 +117,7 @@ public class DataBaseManager {
     }
 
     private boolean initializeUserStatus(int generatedId) throws DatabaseException, SQLException{
-        String query = "INSERT INTO user_status (user_id, id_logged_in) VALUES (?, ?)";
+        String query = "INSERT INTO user_status (user_id, is_logged_in) VALUES (?, ?)";
         Connection conn = getConnection();
         PreparedStatement pstmt = conn.prepareStatement(query);
         pstmt.setInt(1, generatedId);
@@ -130,6 +128,14 @@ public class DataBaseManager {
             throw new DatabaseException("unexpected database behavior");
         }
         return true;
+    }
+
+    public static void main(String[] args) {
+        DataBaseManager ds = new DataBaseManager();
+        Connection conn = ds.getConnection();
+        if(conn == null) {
+            System.out.println("Null");
+        }
     }
 
 }
