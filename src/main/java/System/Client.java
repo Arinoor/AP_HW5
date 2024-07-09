@@ -44,10 +44,18 @@ public class Client {
     }
 
     private void homePageLoggedInPage() {
-        userOutput.println("Welcome to our file manager. You are logged in as " + getLoggedInUser().getUsername() + "\nChoose one of options below\n[1] logout");
+        userOutput.println("Welcome to our file manager. You are logged in as " + getLoggedInUser().getUsername() + "\n" +
+                "Choose one of options below\n" +
+                "[1] Show files to download\n" +
+                "[2] Upload new file\n" +
+                "[3] Logout");
         String query = userInput.next().toLowerCase().trim();
         switch (query) {
             case "1":
+            case "show files to download":
+                //     downloadFilesHandler();
+                break;
+            case "3":
             case "logout":
                 logOutHandler();
                 break;
@@ -119,9 +127,19 @@ public class Client {
         } catch (Exception e) {
             userOutput.println(e.getMessage());
         }
-
     }
 
+    private void downloadFilesHandler() throws IOException {
+        userOutput.println("Choose one of the names below to download the file\n");
+        serverOutput.write("Show files");
+        String respond = serverInput.readLine();
+        String[] fileNames = respond.split(" ");
+        userOutput.println(respond);
+        userOutput.print("Enter your file name : ");
+        String fileName = userInput.nextLine().trim();
+
+
+    }
 
     private boolean sendUserToServer(User user) throws ServerException, IOException {
         String response;
